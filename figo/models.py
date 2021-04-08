@@ -40,7 +40,8 @@ class User(ModelBase):
         created_at: created datetime
     """
 
-    # TODO: "email" and "password" can be also modify - should we add them here
+    # TODO: "email" and "password" can be also modified - should we add them
+    #  here?
     __dump_attributes__ = ["full_name", "language"]
 
     id = None

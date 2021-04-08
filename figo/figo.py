@@ -289,11 +289,11 @@ class FigoConnection(FigoObject):
             method="POST",
         )
 
-        expire_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
+        expiry_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
         return {
             "access_token": res_data["access_token"],
             "refresh_token": res_data.get("refresh_token"),
-            "expires": expire_dt,
+            "expires": expiry_dt,
         }
 
     def credential_login(self, username, password, scope=None):
@@ -322,11 +322,11 @@ class FigoConnection(FigoObject):
             "/auth/token", data, method="POST"
         )
 
-        expire_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
+        expiry_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
         return {
             "access_token": res_data["access_token"],
             "refresh_token": res_data.get("refresh_token"),
-            "expires": expire_dt,
+            "expires": expiry_dt,
             "scope": res_data["scope"],
         }
 
@@ -359,10 +359,10 @@ class FigoConnection(FigoObject):
             "/auth/token", data=data, method="POST"
         )
 
-        expire_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
+        expiry_dt = datetime.now() + timedelta(seconds=res_data["expires_in"])
         return {
             "access_token": res_data["access_token"],
-            "expires": expire_dt,
+            "expires": expiry_dt,
         }
 
     # TODO: Missing unit test
@@ -470,11 +470,7 @@ class FigoSession(FigoObject):
 
     @property
     def user(self):
-        """Get the current figo Account.
-
-        Returns:
-            User object for the current figo Account
-        """
+        """Retrieve the User object for the current Figo account."""
         return self._query_api_object(User, "/rest/user")
 
     # TODO: Missing test cases
