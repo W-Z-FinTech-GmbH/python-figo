@@ -41,7 +41,10 @@ def test_add_user(figo_connection, new_user_id):
 
 def test_get_version(figo_connection):
     response = figo_connection.get_version()
-    assert response == {"environment": "staging", "version": "21.1.2"}
+    assert response == {
+        "environment": "staging",
+        "version": "21.1.4.dev12+aca4ceb2",
+    }
 
 
 def test_create_token_and_session(figo_connection):
