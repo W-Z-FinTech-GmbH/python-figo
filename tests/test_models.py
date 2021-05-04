@@ -8,9 +8,11 @@ from figo.models import (  # noqa: F401
     Category,
     Challenge,
     Credential,
+    CustomCategory,
     LoginSettings,
     Notification,
     Payment,
+    PaymentPartner,
     Security,
     StandingOrder,
     Sync,
@@ -133,23 +135,42 @@ def test_create_payment_from_dict(figo_session):
 
 def test_create_transaction_from_dict(figo_session):
     data = {
-        "account_id": "A1.1",
-        "account_number": "4711951501",
-        "amount": -17.89,
-        "bank_code": "90090042",
-        "bank_name": "Demobank",
-        "booked": False,
-        "booking_date": "2013-04-11T12:00:00.000Z",
-        "booking_text": "Ueberweisung",
-        "creation_timestamp": "2013-04-11T13:54:02.000Z",
+        "account_id": "A12345.6",
+        "transaction_id": "T12345.6",
+        "amount": 23.99,
         "currency": "EUR",
-        "modification_timestamp": "2013-04-11T13:54:02.000Z",
-        "name": "Rogers Shipping, Inc.",
-        "purpose": "Ihre Sendung 0815 vom 01.03.2012, Vielen Dank",
-        "transaction_id": "T1.1.25",
+        "account_number": "0123456789",
+        "bank_code": "90090042",
+        "iban": "DE99012345678910020030",
+        "bic": "DEMOBANKXXX",
+        "bank_name": "Bank XYZ",
+        "booked": True,
+        "booked_at": "2018-08-30T00:00:00.000Z",
+        "settled_at": "2018-08-30T00:00:00.000Z",
+        "booking_key": "MSC",
+        "booking_text": "Dauer-Euro-Überweisung",
+        "categories": [],
+        "contract_id": "C12345.6",
+        "custom_category": {},
+        "creditor_id": "string",
+        "end_to_end_reference": "fasdGopksdf",
+        "mandate_reference": "string",
+        "name": "finX GmbH",
+        "prima_nota_number": "991302",
+        "purpose": "Eref+Test Gehaltszahlung Svwz+Test Dauerauftrag",
+        "sepa_purpose_code": "SALA",
+        "sepa_remittance_info": (
+            "Dauerauftrag from 10464310 to 10464311 Dauerauftrag: 1"
+        ),
+        "transaction_code": 117,
+        "payment_partner": {
+            "id": "6702b891-b8e6-4892-8615-5440e39d3d0e",
+            "name": "Some Supermarket GmbH",
+        },
         "type": "Transfer",
-        "value_date": "2013-04-11T12:00:00.000Z",
-        "visited": True,
+        "additional_info": {"fee": 0.5, "gross_amount": 12.5},
+        "created_at": "2018-08-30T00:00:00.000Z",
+        "modified_at": "2018-08-31T00:00:00.000Z",
     }
     transaction = Transaction.from_dict(figo_session, data)
     assert isinstance(transaction, Transaction)
@@ -180,34 +201,61 @@ def test_create_standing_order_from_dict(figo_session):
 
 def test_create_transaction_with_categories(figo_session):
     data = {
-        "account_id": "A1.1",
-        "account_number": "4711951501",
-        "amount": -17.89,
-        "bank_code": "90090042",
-        "bank_name": "Demobank",
-        "booked": False,
-        "booking_date": "2013-04-11T12:00:00.000Z",
-        "booking_text": "Ueberweisung",
-        "creation_timestamp": "2013-04-11T13:54:02.000Z",
+        "account_id": "A12345.6",
+        "transaction_id": "T12345.6",
+        "amount": 23.99,
         "currency": "EUR",
-        "modification_timestamp": "2013-04-11T13:54:02.000Z",
-        "name": "Rogers Shipping, Inc.",
-        "purpose": "Ihre Sendung 0815 vom 01.03.2012, Vielen Dank",
-        "transaction_id": "T1.1.25",
-        "type": "Transfer",
+        "account_number": "0123456789",
+        "bank_code": "90090042",
+        "iban": "DE99012345678910020030",
+        "bic": "DEMOBANKXXX",
+        "bank_name": "Bank XYZ",
+        "booked": True,
+        "booked_at": "2018-08-30T00:00:00.000Z",
+        "settled_at": "2018-08-30T00:00:00.000Z",
+        "booking_key": "MSC",
+        "booking_text": "Dauer-Euro-Überweisung",
         "categories": [
             {"parent_id": None, "id": 150, "name": "Lebenshaltung"},
             {"parent_id": 150, "id": 162, "name": "Spende"},
         ],
-        "value_date": "2013-04-11T12:00:00.000Z",
-        "visited": True,
+        "contract_id": "C12345.6",
+        "custom_category": {"id": 32, "name": "Groceries"},
+        "creditor_id": "string",
+        "end_to_end_reference": "fasdGopksdf",
+        "mandate_reference": "string",
+        "name": "finX GmbH",
+        "prima_nota_number": "991302",
+        "purpose": "Eref+Test Gehaltszahlung Svwz+Test Dauerauftrag",
+        "sepa_purpose_code": "SALA",
+        "sepa_remittance_info": (
+            "Dauerauftrag from 10464310 to 10464311 Dauerauftrag: 1"
+        ),
+        "transaction_code": 117,
+        "payment_partner": {
+            "id": "6702b891-b8e6-4892-8615-5440e39d3d0e",
+            "name": "Some Supermarket GmbH",
+        },
+        "type": "Transfer",
+        "additional_info": {"fee": 0.5, "gross_amount": 12.5},
+        "created_at": "2018-08-30T00:00:00.000Z",
+        "modified_at": "2018-08-31T00:00:00.000Z",
     }
     transaction = Transaction.from_dict(figo_session, data)
+    print(transaction)
     assert hasattr(transaction, "categories")
     for category in transaction.categories:
         assert isinstance(category, Category)
         assert hasattr(category, "id")
         print(category)
+    assert hasattr(transaction, "custom_category")
+    assert isinstance(transaction.custom_category, CustomCategory)
+    assert hasattr(transaction.custom_category, "id")
+    print(transaction.custom_category)
+    assert hasattr(transaction, "payment_partner")
+    assert isinstance(transaction.payment_partner, PaymentPartner)
+    assert hasattr(transaction.payment_partner, "id")
+    print(transaction.payment_partner)
 
 
 def test_create_notification_from_dict(figo_session):

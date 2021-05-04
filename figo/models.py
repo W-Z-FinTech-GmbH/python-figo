@@ -435,133 +435,143 @@ class Transaction(ModelBase):
     the user.
 
     Attributes:
-        transaction_id: internal figo transaction id
         account_id:  internal figo account id
-        name: name of originator or recipient
-        account_number: account number of originator or recipient
-        bank_code: bank code of originator or recipient
-        bank_name: bank name of originator or recipient
+        transaction_id: internal figo transaction id
         amount: transaction amount
         currency: three-character currency code
-        booking_date: booking date
-        value_date: value date
-        purpose: purpose text
-        type: transaction type, one of (Transfer, Standing order, Direct debit,
-            Salary or rent, GeldKarte, Charges or interest)
-        booking_text: booking text
+        account_number: account number of originator or recipient
+        bank_code: bank code of originator or recipient
+        iban: iban
+        bic: bic
+        bank_name: bank name of originator or recipient
         booked: boolean, indicates whether transaction is booked or pending
+        booked_at: the date on which the transaction was booked
+        settled_at: the date on which the transaction was settled
+        booking_key: booking key
+        booking_text: booking text
         categories: list of categories assigned to this transaction, ordered
             from general to specific
-        creation_timestamp: create date
-        modification_timestamp: modification date
-        visited: boolean, indicates whether the transaction has already been
-            marked as visited by the user
-        bic: bic
-        iban: iban
-        booking_key: booking key
-        creditor_id: creditor id
-        mandate_reference: mandate reference
-        sepa_purpose_code: sepa purpose coe
-        sepa_remittance_info: sepa remittance info
-        text_key_addition: text key addition
+        contract_id: ID of the contract
+        custom_category: Custom category matching the standard category.
+            This attribute is only set if a custom category grouping has been
+            defined
+        creditor_id: FinTS: SEPA creditor identifier (for SEPA direct debits)
         end_to_end_reference: end to end reference
-        customer_reference: customer reference
+        mandate_reference: mandate reference
+        name: name of originator or recipient
         prima_nota_number: prima nota number
+        purpose: purpose text
+        sepa_purpose_code: SEPA purpose code
+        sepa_remittance_info: SEPA remittance info
+        transaction_code: Transaction type as DTA Tx Key code.
+        payment_partner: payment partner with name and ID
+        type: transaction type, one of (Transfer, Standing order, Direct debit,
+            Salary or rent, GeldKarte, Charges or interest)
         additional_info: provides more info about the transaction if available
+        created_at: create date
+        modified_at: modification date
     """
 
     __dump_attributes__ = [
-        "transaction_id",
         "account_id",
-        "name",
-        "account_number",
-        "bank_code",
-        "bank_name",
+        "transaction_id",
         "amount",
         "currency",
-        "booking_date",
-        "value_date",
-        "purpose",
-        "type",
-        "booking_text",
-        "booked",
-        "categories",
-        "creation_timestamp",
-        "modification_timestamp",
-        "visited",
-        "additional_info",
-        "bic",
+        "account_number",
+        "bank_code",
         "iban",
+        "bic",
+        "bank_name",
+        "booked",
+        "booked_at",
+        "settled_at",
         "booking_key",
+        "booking_text",
+        "categories",
+        "contract_id",
+        "custom_category",
         "creditor_id",
+        "end_to_end_reference",
         "mandate_reference",
+        "name",
+        "prima_nota_number",
+        "purpose",
         "sepa_purpose_code",
         "sepa_remittance_info",
-        "text_key_addition",
-        "end_to_end_reference",
-        "customer_reference",
-        "prima_nota_number",
+        "transaction_code",
+        "payment_partner",
+        "type",
+        "additional_info",
+        "created_at",
+        "modified_at",
     ]
 
-    transaction_id = None
     account_id = None
-    name = None
-    account_number = None
-    bank_code = None
-    bank_name = None
+    transaction_id = None
     amount = None
     currency = None
-    booking_date = None
-    value_date = None
-    purpose = None
-    type = None
-    booking_text = None
-    booked = None
-    categories = None
-    creation_timestamp = None
-    modification_timestamp = None
-    visited = None
-    bic = None
+    account_number = None
+    bank_code = None
     iban = None
+    bic = None
+    bank_name = None
+    booked = None
+    booked_at = None
+    settled_at = None
     booking_key = None
+    booking_text = None
+    categories = None
+    contract_id = None
+    custom_category = None
     creditor_id = None
+    end_to_end_reference = None
     mandate_reference = None
+    name = None
+    prima_nota_number = None
+    purpose = None
     sepa_purpose_code = None
     sepa_remittance_info = None
-    text_key_addition = None
-    end_to_end_reference = None
-    customer_reference = None
-    prima_nota_number = None
+    transaction_code = None
+    payment_partner = None
+    type = None
     additional_info = None
+    created_at = None
+    modified_at = None
 
     def __init__(self, session, **kwargs):
         super(Transaction, self).__init__(session, **kwargs)
 
-        if self.creation_timestamp:
-            self.creation_timestamp = dateutil.parser.parse(
-                self.creation_timestamp
-            )
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
 
-        if self.modification_timestamp:
-            self.modification_timestamp = dateutil.parser.parse(
-                self.modification_timestamp
-            )
+        if self.modified_at:
+            self.modified_at = dateutil.parser.parse(self.modified_at)
 
-        if self.booking_date:
-            self.booking_date = dateutil.parser.parse(self.booking_date)
+        if self.booked_at:
+            self.booked_at = dateutil.parser.parse(self.booked_at)
 
-        if self.value_date:
-            self.value_date = dateutil.parser.parse(self.value_date)
+        if self.settled_at:
+            self.settled_at = dateutil.parser.parse(self.settled_at)
 
         if self.categories:
             self.categories = [
                 Category.from_dict(session, c) for c in self.categories
             ]
 
+        if self.custom_category:
+            self.custom_category = CustomCategory.from_dict(
+                session, self.custom_category
+            )
+
+        if self.payment_partner:
+            self.payment_partner = PaymentPartner.from_dict(
+                session, self.payment_partner
+            )
+
     def __str__(self):
         return (
             f"Transaction: {self.amount} {self.currency} to {self.name} at "
-            f"{self.value_date}"
+            f"{self.settled_at}"
         )
 
 
@@ -569,10 +579,9 @@ class Category(ModelBase):
     """Object representing a category for a transaction
 
     Attributes:
-        id:
-        parent_id:
-        name:
-
+        id: ID of the finX standard category.
+        parent_id: ID of the parent category.
+        name: category name
     """
 
     __dump_attributes__ = ["id", "parent_id", "name"]
@@ -583,6 +592,40 @@ class Category(ModelBase):
 
     def __str__(self):
         return f"Category: {self.name}"
+
+
+class CustomCategory(ModelBase):
+    """Object representing a custom category for a transaction
+
+    Attributes:
+        id: ID of the custom category grouping
+        name: category name
+    """
+
+    __dump_attributes__ = ["id", "name"]
+
+    id = None
+    name = None
+
+    def __str__(self):
+        return f"CustomCategory: {self.name}"
+
+
+class PaymentPartner(ModelBase):
+    """Object representing a payment partner for a transaction
+
+    Attributes:
+        id: payment partner ID
+        name: name of payment partner
+    """
+
+    __dump_attributes__ = ["id", "name"]
+
+    id = None
+    name = None
+
+    def __str__(self):
+        return f"PaymentPartner: {self.name}"
 
 
 class Notification(ModelBase):
@@ -773,20 +816,28 @@ class Security(ModelBase):
     user.
 
     Attributes:
-        security_id: internal figo connect security id
         account_id: internal figo connect account id
-        name: name of originator or recipient
-        isin: international securities identification number
-        wkn: wertpapierkennnummer
-        currency: three character currency code
+        security_id: internal figo connect security id
         amount: monetary value in account currency
-        quantity: number of securities or value
         amount_original_currency: monetary value in trading currency
+        created_at: ?
+        currency: three character currency code
         exchange_rate: exchange rate between trading and account currency
-        price: current price
+        isin: international securities identification number
+        market: ?
+        modified_at: ?
+        name: name of the security
+        price: trading price
         price_currency: currency of current price
         purchase_price: purchase price
         purchase_price_currency: currency of purchase price
+        modified_at: ?
+        wkn: wertpapierkennnummer (domestic security identification number)
+        quantity: number of securities or value
+
+
+
+
         visited: boolean that indicates whether the security has been marked
             as visited by the user
         trade_timestamp: trade timestamp
