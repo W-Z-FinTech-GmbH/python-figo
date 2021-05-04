@@ -347,18 +347,24 @@ def test_create_challenge_from_dict(figo_session):
 
 def test_create_security_from_dict(figo_session):
     data = {
-        "account_id": "A1.4",
-        "amount": 32.78,
-        "creation_timestamp": "2013-04-10T08:21:36.000Z",
-        "isin": "US5949181045",
-        "market": "Frankfurt",
-        "modification_timestamp": "2013-04-11T13:54:02.000Z",
-        "name": "MICROSOFT DL-,00000625",
-        "price": 32.79,
-        "purchase_price": 38.96,
-        "quantity": 1,
-        "security_id": "S1.1",
-        "trade_timestamp": "2014-07-29 15:00:00",
+        "account_id": "A12345.6",
+        "security_id": "S12345.6",
+        "amount": 125.5,
+        "amount_original_currency": 125.5,
+        "created_at": "2018-08-30T00:00:00.000Z",
+        "currency": "EUR",
+        "exchange_rate": 1.181,
+        "isin": "DE0005140008",
+        "market": "NYSE",
+        "modified_at": "2018-08-31T00:00:00.000Z",
+        "name": "Deutsche Bank AG",
+        "price": 9.38,
+        "price_currency": "EUR",
+        "purchase_price": 9.45,
+        "purchase_price_currency": "EUR",
+        "traded_at": "2021-05-04T12:21:49Z",
+        "wkn": "514000",
+        "quantity": 14,
     }
     security = Security.from_dict(figo_session, data)
     assert isinstance(security, Security)

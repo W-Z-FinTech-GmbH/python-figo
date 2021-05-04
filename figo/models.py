@@ -762,73 +762,59 @@ class Security(ModelBase):
         security_id: internal figo connect security id
         amount: monetary value in account currency
         amount_original_currency: monetary value in trading currency
-        created_at: ?
+        created_at: internal creation timestamp
         currency: three character currency code
         exchange_rate: exchange rate between trading and account currency
         isin: international securities identification number
-        market: ?
-        modified_at: ?
+        market: market the security is traded on.
+        modified_at: internal modification timestamp
         name: name of the security
         price: trading price
         price_currency: currency of current price
         purchase_price: purchase price
         purchase_price_currency: currency of purchase price
-        modified_at: ?
+        traded_at: trade timestamp
         wkn: wertpapierkennnummer (domestic security identification number)
         quantity: number of securities or value
-
-
-
-
-        visited: boolean that indicates whether the security has been marked
-            as visited by the user
-        trade_timestamp: trade timestamp
-        creation_timestamp: internal creation timestamp
-        modification_timestamp: internal modification timestamp
-
     """
 
     __dump_attributes__ = []
 
-    security_id = None
     account_id = None
-    name = None
-    isin = None
-    wkn = None
-    currency = None
+    security_id = None
     amount = None
-    quantity = None
     amount_original_currency = None
+    created_at = None
+    currency = None
     exchange_rate = None
+    isin = None
+    market = None
+    modified_at = None
+    name = None
     price = None
     price_currency = None
     purchase_price = None
     purchase_price_currency = None
-    visited = None
-    trade_timestamp = None
-    creation_timestamp = None
-    modification_timestamp = None
+    traded_at = None
+    wkn = None
+    quantity = None
 
     def __init__(self, session, **kwargs):
         super(Security, self).__init__(session, **kwargs)
 
-        if self.trade_timestamp:
-            self.trade_timestamp = dateutil.parser.parse(self.trade_timestamp)
+        if self.traded_at:
+            self.traded_at = dateutil.parser.parse(self.traded_at)
 
-        if self.creation_timestamp:
-            self.creation_timestamp = dateutil.parser.parse(
-                self.creation_timestamp
-            )
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
 
-        if self.modification_timestamp:
-            self.modification_timestamp = dateutil.parser.parse(
-                self.modification_timestamp
-            )
+        if self.modified_at:
+            self.modified_at = dateutil.parser.parse(self.modified_at)
 
     def __str__(self):
         return (
             f"Security: {self.amount} {self.currency} to {self.name} at "
-            f"{self.trade_timestamp}"
+            f"{self.traded_at}"
         )
 
 
