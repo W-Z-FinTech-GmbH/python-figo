@@ -98,6 +98,131 @@ class LoginSettings(ModelBase):
         return f"LoginSettings: {self.name}"
 
 
+class Challenge(ModelBase):
+    """Object representing a challenge.
+
+    Attributes:
+        title: challenge title
+        label: response label
+        format: challenge data format, one of (Text, HTML, HHD, Matrix)
+        data: challenge data
+
+    """
+
+    __dump_attributes__ = [
+        "id",
+        "title",
+        "label",
+        "format",
+        "data",
+        "type",
+        "location",
+        "created_at",
+    ]
+
+    id = None
+    title = None
+    label = None
+    format = None
+    data = None
+    type = None
+    location = None
+    created_at = None
+
+    def __str__(self, *args, **kwargs):
+        return f"Challenge: {self.title}"
+
+
+class Sync(ModelBase):
+    """Object representing a syncronisation for account creation.
+
+    Attributes:
+        id: internal figo syncronisation id
+        status: Current processing state of the item.
+        state: The state that was being provided in the request when creating
+            the synchronization.
+        challenge: AuthMethodSelectChallenge (object) or EmbeddedChallenge
+            (object) or RedirectChallenge (object) or DecoupledChallenge
+            (object) (Challenge).
+        error: Error detailing why the background operation failed.
+        created_at: Time at which the sync was created
+        started_at: Time at which the sync started
+        ended_at: Time at which the sync ended
+    """
+
+    __dump_attributes__ = [
+        "id",
+        "status",
+        "state",
+        "challenge",
+        "error",
+        "created_at",
+        "started_at",
+        "ended_at",
+    ]
+
+    id = None
+    status = None
+    state = None
+    challenge = None
+    error = None
+    created_at = None
+    started_at = None
+    ended_at = None
+
+    def __init__(self, session, **kwargs):
+        super(Sync, self).__init__(session, **kwargs)
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
+
+        if self.started_at:
+            self.started_at = dateutil.parser.parse(self.started_at)
+
+        if self.ended_at:
+            self.ended_at = dateutil.parser.parse(self.ended_at)
+
+        if self.challenge:
+            self.challenge = Challenge.from_dict(self.session, self.challenge)
+
+    def __str__(self):
+        return f"Sync: {self.id} Status: {self.status}"
+
+    def dump(self):
+        dumped_value = super(Sync, self).dump()
+        if self.challenge:
+            dumped_value.update({"challenge": self.challenge.dump()})
+
+        return dumped_value
+
+
+class SynchronizationStatus(ModelBase):
+    """Object representing the synchronization status of the figo servers with
+    banks, payment providers or financial service providers.
+
+    Attributes:
+        synced_at: timestamp of last synchronization
+        succeeded_at: timestamp of last successful synchronization
+        message: human-readable error message
+    """
+
+    __dump_attributes__ = []
+
+    synced_at = None
+    succeeded_at = None
+    message = None
+
+    def __init__(self, session, **kwargs):
+        super(SynchronizationStatus, self).__init__(session, **kwargs)
+        if self.synced_at:
+            self.synced_at = dateutil.parser.parse(self.synced_at)
+
+        if self.succeeded_at:
+            self.succeeded_at = dateutil.parser.parse(self.succeeded_at)
+
+    def __str__(self):
+        return f"Synchronization Status: {self.message}"
+
+
 class Account(ModelBase):
     """Object representing one bank account of the user, independent of the
     exact account type.
@@ -289,145 +414,57 @@ class AccountBalance(ModelBase):
             self.balance_date = dateutil.parser.parse(self.balance_date)
 
 
-class Payment(ModelBase):
-    """Object representing a Payment.
-
-    When creating a new Payment for submitment to the Figo API all necessary
-    fields have to be set on the Payment object.
+class Category(ModelBase):
+    """Object representing a category for a transaction
 
     Attributes:
-        payment_id: internal figo payment id
-        account_id: internal figo account id
-        type: payment type, one of (Transfer, Direct Debit, SEPA transfer,
-            SEPA direct debit)
-        name: name of creditor or debtor
-        account_number: account number of creditor or debtor
-        bank_code: bank code of creditor or debtor
-        bank_code: bank name of creditor or debtor
-        amount: order amount
-        purpose: purpose text
-        bank_icon: icon of creditor or debtor bank
-        bank_additional_icons: dictionary that maps resolutions to icon URLs
-        amount: order amount
-        currency: three character currency code
-        purpose: purpose text
-        submission_timestamp: submission timestamp
-        creation_timestamp: internal creation timestamp
-        modification_timestamp: internal creation timestamp
-        traditional_id: transaction id, only set if payment has been matched
-            to a transaction
+        id: ID of the finX standard category.
+        parent_id: ID of the parent category.
+        name: category name
     """
 
-    __dump_attributes__ = [
-        "type",
-        "name",
-        "account_number",
-        "bank_code",
-        "amount",
-        "currency",
-        "purpose",
-    ]
+    __dump_attributes__ = ["id", "parent_id", "name"]
 
-    payment_id = None
-    account_id = None
-    type = None
+    id = None
+    parent_id = None
     name = None
-    account_number = None
-    bank_code = None
-    bank_name = None
-    bank_icon = None
-    bank_additional_icons = None
-    amount = None
-    currency = None
-    purpose = None
-    submission_timestamp = None
-    creation_timestamp = None
-    modification_timestamp = None
-    transaction_id = None
-
-    def __init__(self, session, **kwargs):
-        super(Payment, self).__init__(session, **kwargs)
-
-        if self.submission_timestamp:
-            self.submission_timestamp = dateutil.parser.parse(
-                self.submission_timestamp
-            )
-
-        if self.creation_timestamp:
-            self.creation_timestamp = dateutil.parser.parse(
-                self.creation_timestamp
-            )
-
-        if self.modification_timestamp:
-            self.modification_timestamp = dateutil.parser.parse(
-                self.modification_timestamp
-            )
 
     def __str__(self):
-        return (
-            f"Payment: {self.name} ({self.account_number} at {self.bank_name})"
-        )
+        return f"Category: {self.name}"
 
 
-class StandingOrder(ModelBase):
-    """Object representing one standing order on a certain bank account of the
-    user.
+class CustomCategory(ModelBase):
+    """Object representing a custom category for a transaction
 
     Attributes:
-        standing_order_id: internal figo stanging order id
-        account_id: internal figo account id
-        iban: iban of creditor or debtor
-        amount: order amount
-        currency: three character currency code
-        cents:
-        name: name of originator or recipient
-        purpose: purpose text
-        execution_day: number of days of execution of the standing order
-        first_execution_date: starting day of execution
-        last_execution_date: finishing day of the execution
-        interval:
-        created_at: internal creation timestamp
-        modified_at: internal creation timestamp
+        id: ID of the custom category grouping
+        name: category name
     """
 
-    __dump_attributes__ = []
+    __dump_attributes__ = ["id", "name"]
 
-    standing_order_id = None
-    account_id = None
-    iban = None
-    amount = None
-    currency = None
-    cents = None
+    id = None
     name = None
-    purpose = None
-    execution_day = None
-    first_execution_date = None
-    last_execution_date = None
-    interval = None
-    created_at = None
-    modified_at = None
-
-    def __init__(self, session, **kwargs):
-        super(StandingOrder, self).__init__(session, **kwargs)
-
-        if self.created_at:
-            self.created_at = dateutil.parser.parse(self.created_at)
-
-        if self.modified_at:
-            self.modified_at = dateutil.parser.parse(self.modified_at)
-
-        if self.first_execution_date:
-            self.first_execution_date = dateutil.parser.parse(
-                self.first_execution_date
-            )
-
-        if self.last_execution_date:
-            self.last_execution_date = dateutil.parser.parse(
-                self.last_execution_date
-            )
 
     def __str__(self):
-        return f"Standing Order: {self.standing_order_id}"
+        return f"CustomCategory: {self.name}"
+
+
+class PaymentPartner(ModelBase):
+    """Object representing a payment partner for a transaction
+
+    Attributes:
+        id: payment partner ID
+        name: name of payment partner
+    """
+
+    __dump_attributes__ = ["id", "name"]
+
+    id = None
+    name = None
+
+    def __str__(self):
+        return f"PaymentPartner: {self.name}"
 
 
 class Transaction(ModelBase):
@@ -575,250 +612,145 @@ class Transaction(ModelBase):
         )
 
 
-class Category(ModelBase):
-    """Object representing a category for a transaction
+class Payment(ModelBase):
+    """Object representing a Payment.
+
+    When creating a new Payment for submitment to the Figo API all necessary
+    fields have to be set on the Payment object.
 
     Attributes:
-        id: ID of the finX standard category.
-        parent_id: ID of the parent category.
-        name: category name
+        payment_id: internal figo payment id
+        account_id: internal figo account id
+        type: payment type, one of (Transfer, Direct Debit, SEPA transfer,
+            SEPA direct debit)
+        name: name of creditor or debtor
+        account_number: account number of creditor or debtor
+        bank_code: bank code of creditor or debtor
+        bank_code: bank name of creditor or debtor
+        amount: order amount
+        purpose: purpose text
+        bank_icon: icon of creditor or debtor bank
+        bank_additional_icons: dictionary that maps resolutions to icon URLs
+        amount: order amount
+        currency: three character currency code
+        purpose: purpose text
+        submission_timestamp: submission timestamp
+        creation_timestamp: internal creation timestamp
+        modification_timestamp: internal creation timestamp
+        traditional_id: transaction id, only set if payment has been matched
+            to a transaction
     """
 
-    __dump_attributes__ = ["id", "parent_id", "name"]
+    __dump_attributes__ = [
+        "type",
+        "name",
+        "account_number",
+        "bank_code",
+        "amount",
+        "currency",
+        "purpose",
+    ]
 
-    id = None
-    parent_id = None
+    payment_id = None
+    account_id = None
+    type = None
     name = None
+    account_number = None
+    bank_code = None
+    bank_name = None
+    bank_icon = None
+    bank_additional_icons = None
+    amount = None
+    currency = None
+    purpose = None
+    submission_timestamp = None
+    creation_timestamp = None
+    modification_timestamp = None
+    transaction_id = None
+
+    def __init__(self, session, **kwargs):
+        super(Payment, self).__init__(session, **kwargs)
+
+        if self.submission_timestamp:
+            self.submission_timestamp = dateutil.parser.parse(
+                self.submission_timestamp
+            )
+
+        if self.creation_timestamp:
+            self.creation_timestamp = dateutil.parser.parse(
+                self.creation_timestamp
+            )
+
+        if self.modification_timestamp:
+            self.modification_timestamp = dateutil.parser.parse(
+                self.modification_timestamp
+            )
 
     def __str__(self):
-        return f"Category: {self.name}"
+        return (
+            f"Payment: {self.name} ({self.account_number} at {self.bank_name})"
+        )
 
 
-class CustomCategory(ModelBase):
-    """Object representing a custom category for a transaction
-
-    Attributes:
-        id: ID of the custom category grouping
-        name: category name
-    """
-
-    __dump_attributes__ = ["id", "name"]
-
-    id = None
-    name = None
-
-    def __str__(self):
-        return f"CustomCategory: {self.name}"
-
-
-class PaymentPartner(ModelBase):
-    """Object representing a payment partner for a transaction
+class StandingOrder(ModelBase):
+    """Object representing one standing order on a certain bank account of the
+    user.
 
     Attributes:
-        id: payment partner ID
-        name: name of payment partner
-    """
-
-    __dump_attributes__ = ["id", "name"]
-
-    id = None
-    name = None
-
-    def __str__(self):
-        return f"PaymentPartner: {self.name}"
-
-
-class Notification(ModelBase):
-    """Object representing a configured notification, e.g a webhook or email
-    hook.
-
-    Attributes:
-        notification_id: internal figo notification ID from the notification
-            registration response
-        observe_key: notification key, see
-            http://developer.figo.me/#notification_keys
-        notify_uri: notification messages will be sent to this URL
-        state: state similiar to sync and login process. It will passed as
-            POST data for webhooks
-    """
-
-    __dump_attributes__ = ["observe_key", "notify_uri", "state"]
-
-    notification_id = None
-    observe_key = None
-    notify_uri = None
-    state = None
-
-    def __str__(self):
-        return f"Notification: {self.observe_key} triggering {self.notify_uri}"
-
-
-class SynchronizationStatus(ModelBase):
-    """Object representing the synchronization status of the figo servers with
-    banks, payment providers or financial service providers.
-
-    Attributes:
-        synced_at: timestamp of last synchronization
-        succeeded_at: timestamp of last successful synchronization
-        message: human-readable error message
+        standing_order_id: internal figo stanging order id
+        account_id: internal figo account id
+        iban: iban of creditor or debtor
+        amount: order amount
+        currency: three character currency code
+        cents:
+        name: name of originator or recipient
+        purpose: purpose text
+        execution_day: number of days of execution of the standing order
+        first_execution_date: starting day of execution
+        last_execution_date: finishing day of the execution
+        interval:
+        created_at: internal creation timestamp
+        modified_at: internal creation timestamp
     """
 
     __dump_attributes__ = []
 
-    synced_at = None
-    succeeded_at = None
-    message = None
-
-    def __init__(self, session, **kwargs):
-        super(SynchronizationStatus, self).__init__(session, **kwargs)
-        if self.synced_at:
-            self.synced_at = dateutil.parser.parse(self.synced_at)
-
-        if self.succeeded_at:
-            self.succeeded_at = dateutil.parser.parse(self.succeeded_at)
-
-    def __str__(self):
-        return f"Synchronization Status: {self.message}"
-
-
-class Sync(ModelBase):
-    """Object representing a syncronisation for account creation.
-
-    Attributes:
-        id: internal figo syncronisation id
-        status: Current processing state of the item.
-        state: The state that was being provided in the request when creating
-            the synchronization.
-        challenge: AuthMethodSelectChallenge (object) or EmbeddedChallenge
-            (object) or RedirectChallenge (object) or DecoupledChallenge
-            (object) (Challenge).
-        error: Error detailing why the background operation failed.
-        created_at: Time at which the sync was created
-        started_at: Time at which the sync started
-        ended_at: Time at which the sync ended
-    """
-
-    __dump_attributes__ = [
-        "id",
-        "status",
-        "state",
-        "challenge",
-        "error",
-        "created_at",
-        "started_at",
-        "ended_at",
-    ]
-
-    id = None
-    status = None
-    state = None
-    challenge = None
-    error = None
+    standing_order_id = None
+    account_id = None
+    iban = None
+    amount = None
+    currency = None
+    cents = None
+    name = None
+    purpose = None
+    execution_day = None
+    first_execution_date = None
+    last_execution_date = None
+    interval = None
     created_at = None
-    started_at = None
-    ended_at = None
+    modified_at = None
 
     def __init__(self, session, **kwargs):
-        super(Sync, self).__init__(session, **kwargs)
+        super(StandingOrder, self).__init__(session, **kwargs)
+
         if self.created_at:
             self.created_at = dateutil.parser.parse(self.created_at)
 
-        if self.started_at:
-            self.started_at = dateutil.parser.parse(self.started_at)
+        if self.modified_at:
+            self.modified_at = dateutil.parser.parse(self.modified_at)
 
-        if self.ended_at:
-            self.ended_at = dateutil.parser.parse(self.ended_at)
+        if self.first_execution_date:
+            self.first_execution_date = dateutil.parser.parse(
+                self.first_execution_date
+            )
 
-        if self.challenge:
-            self.challenge = Challenge.from_dict(self.session, self.challenge)
-
-    def __str__(self):
-        return f"Sync: {self.id} Status: {self.status}"
-
-    def dump(self):
-        dumped_value = super(Sync, self).dump()
-        if self.challenge:
-            dumped_value.update({"challenge": self.challenge.dump()})
-
-        return dumped_value
-
-
-class WebhookNotification(ModelBase):
-    """Object representing a WebhookNotification.
-
-    Attributes:
-        notification_id: internal figo notification ID from the notification
-            registration response
-        observe_key: notification key
-        state: the state parameter from the notification registration request
-        data: object or list with the data (AccountBalance or Transaction)
-    """
-
-    __dump_attributes__ = []
-
-    notification_id = None
-    observe_key = None
-    state = None
-    data = None
+        if self.last_execution_date:
+            self.last_execution_date = dateutil.parser.parse(
+                self.last_execution_date
+            )
 
     def __str__(self):
-        return f"WebhookNotification: {self.notification_id}"
-
-
-class Credential(ModelBase):
-    """Object representing a login credential field for a banking service.
-
-    Attributes:
-        label: label for text input field
-        masked: boolean, if set the text input field is used for password
-            entry and should be masked
-        optional: boolean, if set the field is optional and may be an empty
-            string
-    """
-
-    __dump_attributes__ = ["label", "masked", "optional"]
-
-    label = None
-    masked = None
-    optional = None
-
-    def __str__(self, *args, **kwargs):
-        return f"Credential: {self.label}"
-
-
-class Challenge(ModelBase):
-    """Object representing a challenge.
-
-    Attributes:
-        title: challenge title
-        label: response label
-        format: challenge data format, one of (Text, HTML, HHD, Matrix)
-        data: challenge data
-
-    """
-
-    __dump_attributes__ = [
-        "id",
-        "title",
-        "label",
-        "format",
-        "data",
-        "type",
-        "location",
-        "created_at",
-    ]
-
-    id = None
-    title = None
-    label = None
-    format = None
-    data = None
-    type = None
-    location = None
-    created_at = None
-
-    def __str__(self, *args, **kwargs):
-        return f"Challenge: {self.title}"
+        return f"Standing Order: {self.standing_order_id}"
 
 
 class Security(ModelBase):
@@ -898,3 +830,51 @@ class Security(ModelBase):
             f"Security: {self.amount} {self.currency} to {self.name} at "
             f"{self.trade_timestamp}"
         )
+
+
+class Notification(ModelBase):
+    """Object representing a configured notification, e.g a webhook or email
+    hook.
+
+    Attributes:
+        notification_id: internal figo notification ID from the notification
+            registration response
+        observe_key: notification key, see
+            http://developer.figo.me/#notification_keys
+        notify_uri: notification messages will be sent to this URL
+        state: state similiar to sync and login process. It will passed as
+            POST data for webhooks
+    """
+
+    __dump_attributes__ = ["observe_key", "notify_uri", "state"]
+
+    notification_id = None
+    observe_key = None
+    notify_uri = None
+    state = None
+
+    def __str__(self):
+        return f"Notification: {self.observe_key} triggering {self.notify_uri}"
+
+
+class WebhookNotification(ModelBase):
+    """Object representing a WebhookNotification.
+
+    Attributes:
+        notification_id: internal figo notification ID from the notification
+            registration response
+        notification_uri: Notification messages will be sent to this URL.
+            The URL schemes https and http are used for webhooks.
+        observe_key: notification key
+        state: the state parameter from the notification registration request
+    """
+
+    __dump_attributes__ = []
+
+    notification_id = None
+    notification_uri = None
+    observe_key = None
+    state = None
+
+    def __str__(self):
+        return f"WebhookNotification: {self.notification_id}"

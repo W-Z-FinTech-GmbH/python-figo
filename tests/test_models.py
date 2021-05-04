@@ -1,13 +1,11 @@
 import pytest
 
-# TODO: We need create test case this unused import
 from figo.exceptions import FigoException
-from figo.models import (  # noqa: F401
+from figo.models import (
     Account,
     AccountBalance,
     Category,
     Challenge,
-    Credential,
     CustomCategory,
     LoginSettings,
     Notification,
@@ -335,13 +333,6 @@ def test_create_sync_from_dict(figo_session):
     print(sync.challenge)
 
 
-def test_create_credential_from_dict(figo_session):
-    data = {"label": "Benutzername"}
-    credential = Credential.from_dict(figo_session, data)
-    assert isinstance(credential, Credential)
-    print(credential)
-
-
 def test_create_challenge_from_dict(figo_session):
     data = {
         "title": "Pin Eingabe",
@@ -372,6 +363,18 @@ def test_create_security_from_dict(figo_session):
     security = Security.from_dict(figo_session, data)
     assert isinstance(security, Security)
     print(security)
+
+
+def test_create_webhook_notification_from_dict(figo_session):
+    data = {
+        "notification_id": "N12345.6",
+        "notification_uri": "https://finx.example.com/callback",
+        "observe_key": "/rest/accounts/A12345.6/transactions",
+        "state": "4HgwtQP0jsjdz79h",
+    }
+    webhook_notification = WebhookNotification.from_dict(figo_session, data)
+    assert isinstance(webhook_notification, WebhookNotification)
+    print(webhook_notification)
 
 
 OLD_ERROR_FORMAT = {

@@ -1,29 +1,23 @@
 import base64
-import json
 import logging
 import os
-import re
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from dotenv import load_dotenv
 from requests import Session
 
-# TODO: We need verify which of this unused import can be remove from SDK
 from .exceptions import ERROR_MESSAGES, FigoException
-from .models import (  # noqa: F401
+from .models import (
     Account,
     AccountBalance,
-    Category,
     Challenge,
-    Credential,
     LoginSettings,
     Notification,
     Payment,
     Security,
     StandingOrder,
     Sync,
-    SynchronizationStatus,
     Transaction,
     User,
     WebhookNotification,
@@ -549,8 +543,8 @@ class FigoSession(FigoObject):
         Args:
             access_method_id (str): figo ID of the provider access method.
                 [required]
-            credentials (Crendentials object): Credentials used for
-                authentication with the financial service provider.
+            credentials (dict): Credentials used for authentication with the
+                financial service provider.
             consent (Consent object): Configuration of the PSD2 consents.
                 Is ignored for non-PSD2 accesses.
 
@@ -625,7 +619,7 @@ class FigoSession(FigoObject):
                 OAuth cases, Optional
             state (str | None): Arbitrary string to maintain state between this
                 request and the callback
-            credentials (obj): Credentials used for authentication with the
+            credentials (dict): Credentials used for authentication with the
                 financial service provider.
             save_secrets (bool): Indicates whether the confidential parts of
                 the credentials should be saved, default: False
@@ -696,8 +690,6 @@ class FigoSession(FigoObject):
         )
         return self._query_api_object(Challenge, path)
 
-    # TODO: because request method was changed to _request_with_exception ->
-    #  we need to verify how this works with wrong data
     def solve_synchronization_challenge(
         self, access_id, sync_id, challenge_id, data
     ):
@@ -880,56 +872,6 @@ class FigoSession(FigoObject):
             path = f"/rest/transactions/{transaction_id}?{options}"
 
         return self._query_api_object(Transaction, path)
-
-    def modify_account_transactions(self, account_or_account_id, visited=None):
-        """Modify all transactions of a specific account.
-
-        Args:
-            account_or_account_id: account to be modified or its ID
-            visited: new value of the visited field for the transactions
-
-        Returns:
-            Nothing if the request was successful
-        """
-        account_id = get_account_id(account_or_account_id)
-        path = f"/rest/accounts/{account_id}/transactions"
-        return self._request_with_exception(path, {"visited": visited}, "PUT")
-
-    def modify_user_transactions(self, visited=None):
-        """Modify all transactions of the current user.
-
-        Args:
-            visited: new value of the visited field for the transactions
-
-        Returns:
-            Nothing if the request was successful
-        """
-        path = "/rest/transactions"
-        return self._request_with_exception(path, {"visited": visited}, "PUT")
-
-    def delete_transaction(
-        self, account_or_account_id, transaction_or_transaction_id
-    ):
-        """Delete a specific transaction.
-
-        Args:
-            account_or_account_id: account to be modified or its ID
-            transaction_or_transaction_id: Transaction or its ID to be deleted
-
-        Returns:
-            Nothing if the request was successful
-        """
-        account_id = get_account_id(account_or_account_id)
-        if isinstance(transaction_or_transaction_id, Transaction):
-            transaction_or_transaction_id = (
-                transaction_or_transaction_id.transaction_id
-            )
-
-        path = (
-            f"/rest/accounts/{account_id}/transactions/"
-            f"{transaction_or_transaction_id}"
-        )
-        return self._request_with_exception(path, method="DELETE")
 
     # Payments (https://docs.finx.finleap.cloud/stable/#tag/Payments):
 
@@ -1327,56 +1269,6 @@ class FigoSession(FigoObject):
         query = f"/rest/accounts/{account_id}/securities/{security_id}"
         return self._query_api_object(Security, query)
 
-    def modify_security(
-        self, account_or_account_id, security_or_security_id, visited=None
-    ):
-        """Modify a specific security.
-
-        Args:
-            account_or_account_id: account to be modified or its ID
-            security_or_security_id: Security or its ID to be modified
-            visited: new value of the visited field for the security
-
-        Returns:
-            Nothing if the request was successful
-        """
-        account_id = get_account_id(account_or_account_id)
-        if isinstance(security_or_security_id, Security):
-            security_or_security_id = security_or_security_id.security_id
-
-        path = (
-            f"/rest/accounts/{account_id}/securities/{security_or_security_id}"
-        )
-        return self._request_with_exception(path, {"visited": visited}, "PUT")
-
-    def modify_account_securities(self, account_or_account_id, visited=None):
-        """
-        Modify all securities of an account.
-
-        Args:
-            account_or_account_id: account to be modified or its ID
-            visited: new value of the visited field for the security
-
-        Returns:
-            Nothing if the request was successful
-        """
-        account_id = get_account_id(account_or_account_id)
-        path = f"/rest/accounts/{account_id}/securities"
-        return self._request_with_exception(path, {"visited": visited}, "PUT")
-
-    def modify_user_securities(self, visited=None):
-        """Modify all securities from the current user.
-
-        Args:
-            visited: new value of the visited field for the security
-
-        Returns:
-            Nothing if the request was successful
-        """
-        return self._request_with_exception(
-            "/rest/securities", {"visited": visited}, "PUT"
-        )
-
     # Financial Timeline
     # (https://docs.finx.finleap.cloud/stable/#tag/Financial-Timeline):
 
@@ -1399,7 +1291,7 @@ class FigoSession(FigoObject):
         notification.
         """
         return self._query_api_object(
-            Notification,
+            WebhookNotification,
             "/rest/notifications",
             collection_name="notifications",
         )
@@ -1411,38 +1303,42 @@ class FigoSession(FigoObject):
             notification_id: ID of the notification to be retrieved
 
         Returns:
-            Notification object for the respective notification
+            WebhookNotification object for the respective notification
         """
         return self._query_api_object(
-            Notification, "/rest/notifications/" + str(notification_id)
+            WebhookNotification, f"/rest/notifications/{notification_id}"
         )
 
     def add_notification(self, notification):
         """Create a new notification.
 
         Args:
-            notification: new notification to be created. It should have no
-                notification_id set
+            notification (Notification): new notification to be created
+                - it should have no notification_id set
 
         Returns:
-            Notification object for the newly created notification
+            WebhookNotification object for the newly created notification
         """
         return self._query_api_object(
-            Notification, "/rest/notifications", notification.dump(), "POST"
+            WebhookNotification,
+            "/rest/notifications",
+            notification.dump(),
+            "POST",
         )
 
     def modify_notification(self, notification):
         """Modify a notification.
 
         Args:
-            notification: modified notification object to be saved
+            notification (Notification): modified notification object to be
+                saved
 
         Returns:
-            Notification object for the modified notification
+            WebhookNotification object for the modified notification
         """
         return self._query_api_object(
-            Notification,
-            "/rest/notifications/" + notification.notification_id,
+            WebhookNotification,
+            f"/rest/notifications/{notification.notification_id}",
             notification.dump(),
             "PUT",
         )
@@ -1461,36 +1357,3 @@ class FigoSession(FigoObject):
 
         path = f"/rest/notifications/{notification_or_notification_id}"
         self._request_with_exception(path, method="DELETE")
-
-    def parse_webhook_notification(self, message_body):
-        """Parse a webhook notification and get a WebhookNotification object.
-
-        Args:
-            message_body: message body of the webhook message (as string or
-                dict)
-
-        Returns:
-            WebhookNotification object
-        """
-        if not isinstance(message_body, dict):
-            message_body = json.loads(message_body)
-
-        notification = WebhookNotification.from_dict(self, message_body)
-
-        data = self._request_with_exception(notification.observe_key)
-
-        if re.match("/rest/transactions", notification.observe_key):
-            notification.data = self._process_model_list(
-                data["transactions"], Transaction
-            )
-        elif re.match(
-            "/rest/accounts/(.*)/transactions", notification.observe_key
-        ):
-
-            notification.data = self._process_model_list(
-                data["transactions"], Transaction
-            )
-        elif re.match("/rest/accounts/(.*)/balance", notification.observe_key):
-            notification.data = AccountBalance.from_dict(data)
-
-        return notification
