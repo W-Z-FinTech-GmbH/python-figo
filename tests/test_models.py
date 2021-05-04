@@ -272,13 +272,9 @@ def test_create_notification_from_dict(figo_session):
 
 def test_create_sync_status_from_dict(figo_session):
     data = {
-        "code": -1,
-        "message": (
-            "Cannot load credential 8f084858-e1c6-4642-87f8-540b530b6e0f: "
-            "UUID does not exist."
-        ),
-        "success_timestamp": "2013-09-11T00:00:00.000Z",
-        "sync_timestamp": "2014-07-09T10:04:40.000Z",
+        "synced_at": "2018-08-30T00:00:00.000Z",
+        "succeeded_at": "2018-08-30T00:00:00.000Z",
+        "message": "string",
     }
     sync_status = SynchronizationStatus.from_dict(figo_session, data)
     assert isinstance(sync_status, SynchronizationStatus)
@@ -301,6 +297,42 @@ def test_create_login_settings_from_dict(figo_session):
     login_settings = LoginSettings.from_dict(figo_session, data)
     assert isinstance(login_settings, LoginSettings)
     print(login_settings)
+
+
+def test_create_sync_from_dict(figo_session):
+    data = {
+        "id": "string",
+        "status": "QUEUED",
+        "state": "string",
+        "challenge": {
+            "id": "L12345.3",
+            "created_at": "2019-08-31T12:13:11.000Z",
+            "type": "METHOD_SELECTION",
+            "auth_methods": [
+                {
+                    "id": "M12345.6",
+                    "type": "SMS_OTP",
+                    "name": "string",
+                    "medium_name": "Mobile phone 1",
+                }
+            ],
+        },
+        "error": {
+            "code": 0,
+            "name": "string",
+            "message": None,
+            "description": "string",
+            "group": "client",
+        },
+        "created_at": "2019-08-31T12:13:09.000Z",
+        "started_at": "2019-08-31T12:13:11.000Z",
+        "ended_at": "2019-08-31T12:13:45.000Z",
+    }
+    sync = Sync.from_dict(figo_session, data)
+    assert isinstance(sync, Sync)
+    print(sync)
+    assert isinstance(sync.challenge, Challenge)
+    print(sync.challenge)
 
 
 def test_create_credential_from_dict(figo_session):

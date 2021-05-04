@@ -658,21 +658,27 @@ class SynchronizationStatus(ModelBase):
     banks, payment providers or financial service providers.
 
     Attributes:
-        code: internal figo status code
+        synced_at: timestamp of last synchronization
+        succeeded_at: timestamp of last successful synchronization
         message: human-readable error message
-        sync_timestamp: timestamp of last synchronization
-        success_timestamp: timestamp of last successful synchronization
     """
 
     __dump_attributes__ = []
 
-    code = None
+    synced_at = None
+    succeeded_at = None
     message = None
-    sync_timestamp = None
-    success_timestamp = None
+
+    def __init__(self, session, **kwargs):
+        super(SynchronizationStatus, self).__init__(session, **kwargs)
+        if self.synced_at:
+            self.synced_at = dateutil.parser.parse(self.synced_at)
+
+        if self.succeeded_at:
+            self.succeeded_at = dateutil.parser.parse(self.succeeded_at)
 
     def __str__(self):
-        return f"Synchronization Status: {self.code} ({self.message})"
+        return f"Synchronization Status: {self.message}"
 
 
 class Sync(ModelBase):
@@ -681,6 +687,8 @@ class Sync(ModelBase):
     Attributes:
         id: internal figo syncronisation id
         status: Current processing state of the item.
+        state: The state that was being provided in the request when creating
+            the synchronization.
         challenge: AuthMethodSelectChallenge (object) or EmbeddedChallenge
             (object) or RedirectChallenge (object) or DecoupledChallenge
             (object) (Challenge).
@@ -693,6 +701,7 @@ class Sync(ModelBase):
     __dump_attributes__ = [
         "id",
         "status",
+        "state",
         "challenge",
         "error",
         "created_at",
@@ -702,6 +711,7 @@ class Sync(ModelBase):
 
     id = None
     status = None
+    state = None
     challenge = None
     error = None
     created_at = None
@@ -723,7 +733,7 @@ class Sync(ModelBase):
             self.challenge = Challenge.from_dict(self.session, self.challenge)
 
     def __str__(self):
-        return f"Sync: {self.id}"
+        return f"Sync: {self.id} Status: {self.status}"
 
     def dump(self):
         dumped_value = super(Sync, self).dump()
