@@ -106,7 +106,7 @@ class FigoObject:
                 #  exception?
                 res_data = {}
 
-        if self._has_error(res_data):
+        if self._has_error(res_data) and not (200 <= status_code < 300):
             if raise_exception:
                 logger.error(
                     "Raise FigoException for response status code {}".format(

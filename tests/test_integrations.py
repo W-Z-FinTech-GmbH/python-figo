@@ -209,6 +209,16 @@ def test_delete_account():
     assert response == {}
 
 
+def test_get_account_after_delete():
+    try:
+        pytest.session.get_account(pytest.account_id)
+    except FigoException as err:
+        assert err is not None
+        assert err.error is None
+        assert err.status_code == 404
+        assert err.error_description == "The requested object does not exist."
+
+
 def test_remove_user():
     response = pytest.session.remove_user()
     assert response == {}
