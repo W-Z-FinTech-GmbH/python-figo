@@ -602,11 +602,11 @@ class FigoSession(FigoObject):
     def add_sync(
         self,
         access_id,
-        disable_notifications,
-        redirect_uri,
-        state,
-        credentials,
-        save_secrets,
+        disable_notifications=None,
+        redirect_uri=None,
+        state=None,
+        credentials=None,
+        save_secrets=None,
     ):
         """Start synchronization process.
 
