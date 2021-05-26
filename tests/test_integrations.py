@@ -43,7 +43,7 @@ def test_get_version(figo_connection):
     response = figo_connection.get_version()
     assert response == {
         "environment": "staging",
-        "version": "21.2.2",
+        "version": "21.3.1",
     }
 
 
