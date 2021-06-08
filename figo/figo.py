@@ -130,7 +130,7 @@ class FigoObject:
             logger.error(
                 "Error dict returned for status: {}".format(status_code)
             )
-            res_data = {"error": ERROR_MESSAGES[response.status_code]}
+            res_data = {"error": ERROR_MESSAGES[status_code]}
         elif 200 <= status_code < 300:
             logger.debug(
                 "Successful response - status: {} and  data returned: {}"
@@ -535,8 +535,6 @@ class FigoSession(FigoObject):
 
     # Accesses (https://docs.finx.finleap.cloud/stable/#tag/Accesses):
 
-    # TODO: because request method was changed to _request_with_exception ->
-    #  we need to verify how this works with wrong data
     def add_access(self, access_method_id, credentials, consent):
         """Add provider access
 
