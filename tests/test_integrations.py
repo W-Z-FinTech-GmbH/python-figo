@@ -4,7 +4,7 @@ import pytest
 from dotenv import load_dotenv
 
 from figo.exceptions import FigoException
-from figo.figo import FigoSession
+from figo.figo import API_ENDPOINT, FigoSession
 from figo.models import Account, Challenge, Sync
 
 from .conftest import PASSWORD
@@ -41,10 +41,12 @@ def test_add_user(figo_connection, new_user_id):
 
 def test_get_version(figo_connection):
     response = figo_connection.get_version()
-    assert response == {
-        "environment": "staging",
-        "version": "21.3.1",
-    }
+    correct_response = (
+        {"environment": "staging", "version": "21.3.1"}
+        if "staging" in API_ENDPOINT
+        else {"environment": "production", "version": "21.2.2"}
+    )
+    assert response == correct_response
 
 
 def test_create_token_and_session(figo_connection):
