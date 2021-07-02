@@ -7,7 +7,7 @@ Python bindings for the figo Connect API: https://docs.finx.finleap.cloud/stable
 First, you have to install the package:
 
 ```shell
-pip install python-figo
+pip install -e git+https://github.com/W-Z-FinTech-GmbH/python-figo.git#egg=python-figo
 ```
 
 Now you can create a new session from the demo access token and read data:
