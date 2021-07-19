@@ -51,7 +51,7 @@ class FigoObject:
 
     @staticmethod
     def _has_error(response):
-        return "error" in response and response["error"]
+        return bool(response.get("error"))
 
     def _request_api(
         self, path, data=None, method="GET", raise_exception=False
