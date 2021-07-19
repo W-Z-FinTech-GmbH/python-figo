@@ -51,6 +51,7 @@ class FigoObject:
 
     @staticmethod
     def _has_error(response):
+        response = response[0] if isinstance(response, list) else response
         return bool(response.get("error"))
 
     def _request_api(
