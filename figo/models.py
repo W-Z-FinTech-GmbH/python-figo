@@ -1,5 +1,3 @@
-import sys
-
 import dateutil.parser
 
 
@@ -7,12 +5,6 @@ class ModelBase(object):
     """Super class for all models. Provides basic serialization."""
 
     __dump_attributes__ = []
-
-    # Borrowed from Armin Ronacher
-    if sys.version_info > (3, 0):
-        __str__ = lambda x: x.__unicode__()  # noqa
-    else:
-        __str__ = lambda x: unicode(x).encode('utf-8')  # noqa
 
     @classmethod
     def from_dict(cls, session, data_dict):
@@ -36,57 +28,249 @@ class ModelBase(object):
         return result
 
 
+class User(ModelBase):
+    """Object representing an user.
+    https://docs.finx.finleap.cloud/stable/#operation/getUser
+
+    Attributes:
+        id: internal figo user id
+        full_name: full name
+        email: email address
+        language: two letter code for preferred language
+        created_at: created datetime
+    """
+
+    # TODO: "email" and "password" can be also modified - should we add them
+    #  here?
+    __dump_attributes__ = ["full_name", "language"]
+
+    id = None
+    full_name = None
+    email = None
+    language = None
+    created_at = None
+
+    def __init__(self, session, **kwargs):
+        super().__init__(session, **kwargs)
+
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
+
+    def __str__(self):
+        return f"User: {self.full_name} ({self.id}, {self.email})"
+
+
+class LoginSettings(ModelBase):
+    """Object representing login settings for a banking service.
+
+    Attributes:
+        bank_name: human readable bank of the bank
+        supported: boolean, if set bank is supported
+        icon: JSON list with icons (different resolutions)
+        credentials: list of credentials needed to connect to the bank
+        auth_type: kind of authentication used by the bank
+        advice: any additional advice useful to locate the required credentials
+    """
+
+    __dump_attributes__ = [
+        "id",
+        "name",
+        "icon",
+        "supported",
+        "country",
+        "language",
+        "bic",
+        "access_methods",
+        "bank_code",
+    ]
+
+    id = None
+    name = None
+    icon = None
+    supported = None
+    country = None
+    language = None
+    bic = None
+    access_methods = None
+    bank_code = None
+
+    def __str__(self, *args, **kwargs):
+        return f"LoginSettings: {self.name}"
+
+
+class Challenge(ModelBase):
+    """Object representing a challenge.
+
+    Attributes:
+        title: challenge title
+        label: response label
+        format: challenge data format, one of (Text, HTML, HHD, Matrix)
+        data: challenge data
+
+    """
+
+    __dump_attributes__ = [
+        "id",
+        "title",
+        "label",
+        "format",
+        "data",
+        "type",
+        "location",
+        "created_at",
+    ]
+
+    id = None
+    title = None
+    label = None
+    format = None
+    data = None
+    type = None
+    location = None
+    created_at = None
+
+    def __str__(self, *args, **kwargs):
+        return f"Challenge: {self.title}"
+
+
+class Sync(ModelBase):
+    """Object representing a syncronisation for account creation.
+
+    Attributes:
+        id: internal figo syncronisation id
+        status: Current processing state of the item.
+        state: The state that was being provided in the request when creating
+            the synchronization.
+        challenge: AuthMethodSelectChallenge (object) or EmbeddedChallenge
+            (object) or RedirectChallenge (object) or DecoupledChallenge
+            (object) (Challenge).
+        error: Error detailing why the background operation failed.
+        created_at: Time at which the sync was created
+        started_at: Time at which the sync started
+        ended_at: Time at which the sync ended
+    """
+
+    __dump_attributes__ = [
+        "id",
+        "status",
+        "state",
+        "challenge",
+        "error",
+        "created_at",
+        "started_at",
+        "ended_at",
+    ]
+
+    id = None
+    status = None
+    state = None
+    challenge = None
+    error = None
+    created_at = None
+    started_at = None
+    ended_at = None
+
+    def __init__(self, session, **kwargs):
+        super(Sync, self).__init__(session, **kwargs)
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
+
+        if self.started_at:
+            self.started_at = dateutil.parser.parse(self.started_at)
+
+        if self.ended_at:
+            self.ended_at = dateutil.parser.parse(self.ended_at)
+
+        if self.challenge:
+            self.challenge = Challenge.from_dict(self.session, self.challenge)
+
+    def __str__(self):
+        return f"Sync: {self.id} Status: {self.status}"
+
+    def dump(self):
+        dumped_value = super(Sync, self).dump()
+        if self.challenge:
+            dumped_value.update({"challenge": self.challenge.dump()})
+
+        return dumped_value
+
+
+class SynchronizationStatus(ModelBase):
+    """Object representing the synchronization status of the figo servers with
+    banks, payment providers or financial service providers.
+
+    Attributes:
+        synced_at: timestamp of last synchronization
+        succeeded_at: timestamp of last successful synchronization
+        message: human-readable error message
+    """
+
+    __dump_attributes__ = []
+
+    synced_at = None
+    succeeded_at = None
+    message = None
+
+    def __init__(self, session, **kwargs):
+        super(SynchronizationStatus, self).__init__(session, **kwargs)
+        if self.synced_at:
+            self.synced_at = dateutil.parser.parse(self.synced_at)
+
+        if self.succeeded_at:
+            self.succeeded_at = dateutil.parser.parse(self.succeeded_at)
+
+    def __str__(self):
+        return f"Synchronization Status: {self.message}"
+
+
 class Account(ModelBase):
     """Object representing one bank account of the user, independent of the
     exact account type.
 
     Attributes:
         account_id: internal figo connect account id
+        account_number: account number
+        bank_code: bank code (BLZ)
+        iban: iban code
+        bic: bic code
+        access_id: finX ID of the provider access
+        bank_name: name of bank or financial provider.
+        icon: JSON list with bank icons (different resolutions)
+        currency: three character currency code
         balance: account balance
-        bank_id: internal figo connect bank id
+        type: account type, one of (Giro account, Savings account,
+            Credit card, Loan account, PayPal, Cash book, Unknown)
         name: account name
         owner: account owner
         auto_sync: boolean value that indicates whether the account is
             automatically synchronized
-        account_number: account number
-        bank_code: bank code
-        currency: three character currency code
-        iban: iban code
-        bic: bic code
-        type: account type, one of (Giro account, Savings account,
-            Credit card, Loan account, PayPal, Cash book, Unknown)
-        supported_tan_schemes: List of supported tan schemes
-        preferred_tan_scheme: id of preferred tan scheme
-        icon: account icon URL
-        additional_icons: dictionary that maps resolutions to icon URLs
+        save_pin: indicates if the provider credentials are saved for this
+            account (Default: false).
+        supported_payments: mapping of payment types to payment parameters
+            supported by this account.
+        is_jointly_managed: indicates that the account has been opened by two
+            or more individuals or entities.
         status: synchronization status object
     """
 
-    __dump_attributes__ = ['name', 'owner', 'auto_sync']
-
     account_id = None
+    account_number = None
+    bank_code = None
+    iban = None
+    bic = None
+    access_id = None
+    bank_name = None
+    icon = None
+    currency = None
     balance = None
-    bank_id = None
+    type = None
     name = None
     owner = None
     auto_sync = None
-    account_number = None
-    bank_code = None
-    bank_name = None
-    currency = None
-    iban = None
-    bic = None
-    type = None
-    supported_tan_schemes = None
-    preferred_tan_scheme = None
-    icon = None
-    additional_icons = None
+    save_pin = None
+    supported_payments = None
+    is_jointly_managed = None
     status = None
-
-    @property
-    def bank(self):
-        """The corresponding BankContact object for this account."""
-        return self.session.get_bank(self.bank_id)
 
     @property
     def payments(self):
@@ -185,9 +369,9 @@ class Account(ModelBase):
         """
         return self.session.get_security(self.account_id, security_id)
 
-    def __unicode__(self):
-        return u"Account: %s (%s at %s)" % (
-            self.name, self.account_number, self.bank_name
+    def __str__(self):
+        return (
+            f"Account: {self.name} ({self.account_number} at {self.bank_name})"
         )
 
     def __init__(self, session, **kwargs):
@@ -197,28 +381,7 @@ class Account(ModelBase):
                 self.session, self.status
             )
         if self.balance:
-            self.balance = AccountBalance.from_dict(
-                self.session, self.balance
-            )
-
-
-class BankContact(ModelBase):
-    """Object representing a BankContact.
-
-    Attributes:
-        bank_id: figo internal bank id
-        sepa_creditor_id: SEPA direct debit creditor id
-        save_pin: boolean, indicates whether user has chosen to save PIN
-    """
-
-    __dump_attributes__ = ["sepa_creditor_id"]
-
-    bank_id = None
-    sepa_creditor_id = None
-    save_pin = None
-
-    def __unicode__(self):
-        return u"BankContact: %s " % self.bank_id
+            self.balance = AccountBalance.from_dict(self.session, self.balance)
 
 
 class AccountBalance(ModelBase):
@@ -233,16 +396,12 @@ class AccountBalance(ModelBase):
         status: synchronization status object
     """
 
-    __dump_attributes__ = ["credit_line", "monthly_spending_limit"]
-
     balance = None
     balance_date = None
-    credit_line = None
-    monthly_spending_limit = None
     status = None
 
-    def __unicode__(self):
-        return u"Balance: %d at %s" % (self.balance, str(self.balance_date))
+    def __str__(self):
+        return f"Balance: {self.balance} at {self.balance_date}"
 
     def __init__(self, session, **kwargs):
         super(AccountBalance, self).__init__(session, **kwargs)
@@ -253,6 +412,204 @@ class AccountBalance(ModelBase):
 
         if self.balance_date:
             self.balance_date = dateutil.parser.parse(self.balance_date)
+
+
+class Category(ModelBase):
+    """Object representing a category for a transaction
+
+    Attributes:
+        id: ID of the finX standard category.
+        parent_id: ID of the parent category.
+        name: category name
+    """
+
+    __dump_attributes__ = ["id", "parent_id", "name"]
+
+    id = None
+    parent_id = None
+    name = None
+
+    def __str__(self):
+        return f"Category: {self.name}"
+
+
+class CustomCategory(ModelBase):
+    """Object representing a custom category for a transaction
+
+    Attributes:
+        id: ID of the custom category grouping
+        name: category name
+    """
+
+    __dump_attributes__ = ["id", "name"]
+
+    id = None
+    name = None
+
+    def __str__(self):
+        return f"CustomCategory: {self.name}"
+
+
+class PaymentPartner(ModelBase):
+    """Object representing a payment partner for a transaction
+
+    Attributes:
+        id: payment partner ID
+        name: name of payment partner
+    """
+
+    __dump_attributes__ = ["id", "name"]
+
+    id = None
+    name = None
+
+    def __str__(self):
+        return f"PaymentPartner: {self.name}"
+
+
+class Transaction(ModelBase):
+    """Object representing one bank transaction on a certain bank account of
+    the user.
+
+    Attributes:
+        account_id:  internal figo account id
+        transaction_id: internal figo transaction id
+        amount: transaction amount
+        currency: three-character currency code
+        account_number: account number of originator or recipient
+        bank_code: bank code of originator or recipient
+        iban: iban
+        bic: bic
+        bank_name: bank name of originator or recipient
+        booked: boolean, indicates whether transaction is booked or pending
+        booked_at: the date on which the transaction was booked
+        settled_at: the date on which the transaction was settled
+        booking_key: booking key
+        booking_text: booking text
+        categories: list of categories assigned to this transaction, ordered
+            from general to specific
+        contract_id: ID of the contract
+        custom_category: Custom category matching the standard category.
+            This attribute is only set if a custom category grouping has been
+            defined
+        creditor_id: FinTS: SEPA creditor identifier (for SEPA direct debits)
+        end_to_end_reference: end to end reference
+        mandate_reference: mandate reference
+        name: name of originator or recipient
+        prima_nota_number: prima nota number
+        purpose: purpose text
+        sepa_purpose_code: SEPA purpose code
+        sepa_remittance_info: SEPA remittance info
+        transaction_code: Transaction type as DTA Tx Key code.
+        payment_partner: payment partner with name and ID
+        type: transaction type, one of (Transfer, Standing order, Direct debit,
+            Salary or rent, GeldKarte, Charges or interest)
+        additional_info: provides more info about the transaction if available
+        created_at: create date
+        modified_at: modification date
+    """
+
+    __dump_attributes__ = [
+        "account_id",
+        "transaction_id",
+        "amount",
+        "currency",
+        "account_number",
+        "bank_code",
+        "iban",
+        "bic",
+        "bank_name",
+        "booked",
+        "booked_at",
+        "settled_at",
+        "booking_key",
+        "booking_text",
+        "categories",
+        "contract_id",
+        "custom_category",
+        "creditor_id",
+        "end_to_end_reference",
+        "mandate_reference",
+        "name",
+        "prima_nota_number",
+        "purpose",
+        "sepa_purpose_code",
+        "sepa_remittance_info",
+        "transaction_code",
+        "payment_partner",
+        "type",
+        "additional_info",
+        "created_at",
+        "modified_at",
+    ]
+
+    account_id = None
+    transaction_id = None
+    amount = None
+    currency = None
+    account_number = None
+    bank_code = None
+    iban = None
+    bic = None
+    bank_name = None
+    booked = None
+    booked_at = None
+    settled_at = None
+    booking_key = None
+    booking_text = None
+    categories = None
+    contract_id = None
+    custom_category = None
+    creditor_id = None
+    end_to_end_reference = None
+    mandate_reference = None
+    name = None
+    prima_nota_number = None
+    purpose = None
+    sepa_purpose_code = None
+    sepa_remittance_info = None
+    transaction_code = None
+    payment_partner = None
+    type = None
+    additional_info = None
+    created_at = None
+    modified_at = None
+
+    def __init__(self, session, **kwargs):
+        super(Transaction, self).__init__(session, **kwargs)
+
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
+
+        if self.modified_at:
+            self.modified_at = dateutil.parser.parse(self.modified_at)
+
+        if self.booked_at:
+            self.booked_at = dateutil.parser.parse(self.booked_at)
+
+        if self.settled_at:
+            self.settled_at = dateutil.parser.parse(self.settled_at)
+
+        if self.categories:
+            self.categories = [
+                Category.from_dict(session, c) for c in self.categories
+            ]
+
+        if self.custom_category:
+            self.custom_category = CustomCategory.from_dict(
+                session, self.custom_category
+            )
+
+        if self.payment_partner:
+            self.payment_partner = PaymentPartner.from_dict(
+                session, self.payment_partner
+            )
+
+    def __str__(self):
+        return (
+            f"Transaction: {self.amount} {self.currency} to {self.name} at "
+            f"{self.settled_at}"
+        )
 
 
 class Payment(ModelBase):
@@ -285,8 +642,13 @@ class Payment(ModelBase):
     """
 
     __dump_attributes__ = [
-        "type", "name", "account_number", "bank_code", "amount", "currency",
-        "purpose"
+        "type",
+        "name",
+        "account_number",
+        "bank_code",
+        "amount",
+        "currency",
+        "purpose",
     ]
 
     payment_id = None
@@ -324,9 +686,9 @@ class Payment(ModelBase):
                 self.modification_timestamp
             )
 
-    def __unicode__(self):
-        return u"Payment: %s (%s at %s)" % (
-            self.name, self.account_number, self.bank_name
+    def __str__(self):
+        return (
+            f"Payment: {self.name} ({self.account_number} at {self.bank_name})"
         )
 
 
@@ -387,162 +749,73 @@ class StandingOrder(ModelBase):
                 self.last_execution_date
             )
 
-    def __unicode__(self):
-        return u"Standing Order: %s " % (self.id)
+    def __str__(self):
+        return f"Standing Order: {self.standing_order_id}"
 
 
-class Transaction(ModelBase):
-    """Object representing one bank transaction on a certain bank account of
-    the user.
+class Security(ModelBase):
+    """Object representing one bank security on a certain bank account of the
+    user.
 
     Attributes:
-        transaction_id: internal figo transaction id
-        account_id:  internal figo account id
-        name: name of originator or recipient
-        account_number: account number of originator or recipient
-        bank_code: bank code of originator or recipient
-        bank_name: bank name of originator or recipient
-        amount: transaction amount
-        currency: three-character currency code
-        booking_date: booking date
-        value_date: value date
-        purpose: purpose text
-        type: transaction type, one of (Transfer, Standing order, Direct debit,
-            Salary or rent, GeldKarte, Charges or interest)
-        booking_text: booking text
-        booked: boolean, indicates whether transaction is booked or pending
-        categories: list of categories assigned to this transaction, ordered
-            from general to specific
-        creation_timestamp: create date
-        modification_timestamp: modification date
-        visited: boolean, indicates whether the transaction has already been
-            marked as visited by the user
-        bic: bic
-        iban: iban
-        booking_key: booking key
-        creditor_id: creditor id
-        mandate_reference: mandate reference
-        sepa_purpose_code: sepa purpose coe
-        sepa_remittance_info: sepa remittance info
-        text_key_addition: text key addition
-        end_to_end_reference: end to end reference
-        customer_reference: customer reference
-        prima_nota_number: prima nota number
-        additional_info: provides more info about the transaction if available
+        account_id: internal figo connect account id
+        security_id: internal figo connect security id
+        amount: monetary value in account currency
+        amount_original_currency: monetary value in trading currency
+        created_at: internal creation timestamp
+        currency: three character currency code
+        exchange_rate: exchange rate between trading and account currency
+        isin: international securities identification number
+        market: market the security is traded on.
+        modified_at: internal modification timestamp
+        name: name of the security
+        price: trading price
+        price_currency: currency of current price
+        purchase_price: purchase price
+        purchase_price_currency: currency of purchase price
+        traded_at: trade timestamp
+        wkn: wertpapierkennnummer (domestic security identification number)
+        quantity: number of securities or value
     """
 
-    __dump_attributes__ = [
-        "transaction_id",
-        "account_id",
-        "name",
-        "account_number",
-        "bank_code",
-        "bank_name",
-        "amount",
-        "currency",
-        "booking_date",
-        "value_date",
-        "purpose",
-        "type",
-        "booking_text",
-        "booked",
-        "categories",
-        "creation_timestamp",
-        "modification_timestamp",
-        "visited",
-        "additional_info",
-        "bic",
-        "iban",
-        "booking_key",
-        "creditor_id",
-        "mandate_reference",
-        "sepa_purpose_code",
-        "sepa_remittance_info",
-        "text_key_addition",
-        "end_to_end_reference",
-        "customer_reference",
-        "prima_nota_number",
-    ]
+    __dump_attributes__ = []
 
-    transaction_id = None
     account_id = None
-    name = None
-    account_number = None
-    bank_code = None
-    bank_name = None
+    security_id = None
     amount = None
+    amount_original_currency = None
+    created_at = None
     currency = None
-    booking_date = None
-    value_date = None
-    purpose = None
-    type = None
-    booking_text = None
-    booked = None
-    categories = None
-    creation_timestamp = None
-    modification_timestamp = None
-    visited = None
-    bic = None
-    iban = None
-    booking_key = None
-    creditor_id = None
-    mandate_reference = None
-    sepa_purpose_code = None
-    sepa_remittance_info = None
-    text_key_addition = None
-    end_to_end_reference = None
-    customer_reference = None
-    prima_nota_number = None
-    additional_info = None
+    exchange_rate = None
+    isin = None
+    market = None
+    modified_at = None
+    name = None
+    price = None
+    price_currency = None
+    purchase_price = None
+    purchase_price_currency = None
+    traded_at = None
+    wkn = None
+    quantity = None
 
     def __init__(self, session, **kwargs):
-        super(Transaction, self).__init__(session, **kwargs)
+        super(Security, self).__init__(session, **kwargs)
 
-        if self.creation_timestamp:
-            self.creation_timestamp = dateutil.parser.parse(
-                self.creation_timestamp
-            )
+        if self.traded_at:
+            self.traded_at = dateutil.parser.parse(self.traded_at)
 
-        if self.modification_timestamp:
-            self.modification_timestamp = dateutil.parser.parse(
-                self.modification_timestamp
-            )
+        if self.created_at:
+            self.created_at = dateutil.parser.parse(self.created_at)
 
-        if self.booking_date:
-            self.booking_date = dateutil.parser.parse(self.booking_date)
+        if self.modified_at:
+            self.modified_at = dateutil.parser.parse(self.modified_at)
 
-        if self.value_date:
-            self.value_date = dateutil.parser.parse(self.value_date)
-
-        if self.categories:
-            self.categories = [
-                Category.from_dict(session, c) for c in self.categories
-            ]
-
-    def __unicode__(self):
-        return u"Transaction: %d %s to %s at %s" % (
-            self.amount, self.currency, self.name, str(self.value_date)
+    def __str__(self):
+        return (
+            f"Security: {self.amount} {self.currency} to {self.name} at "
+            f"{self.traded_at}"
         )
-
-
-class Category(ModelBase):
-    """Object representing a category for a transaction
-
-    Attributes:
-        id:
-        parent_id:
-        name:
-
-    """
-
-    __dump_attributes__ = ["id", "parent_id", "name"]
-
-    id = None
-    parent_id = None
-    name = None
-
-    def __unicode__(self):
-        return self.name
 
 
 class Notification(ModelBase):
@@ -566,134 +839,8 @@ class Notification(ModelBase):
     notify_uri = None
     state = None
 
-    def __unicode__(self):
-        return u"Notification: %s triggering %s" % (
-            self.observe_key, self.notify_uri
-        )
-
-
-class SynchronizationStatus(ModelBase):
-    """Object representing the synchronization status of the figo servers with
-    banks, payment providers or financial service providers.
-
-    Attributes:
-        code: internal figo status code
-        message: human-readable error message
-        sync_timestamp: timestamp of last synchronization
-        success_timestamp: timestamp of last successful synchronization
-    """
-
-    __dump_attributes__ = []
-
-    code = None
-    message = None
-    sync_timestamp = None
-    success_timestamp = None
-
-    def __unicode__(self):
-        return u"Synchronization Status: %s (%s)" % (self.code, self.message)
-
-
-class Sync(ModelBase):
-    """Object representing a syncronisation for account creation.
-
-    Attributes:
-        id: internal figo syncronisation id
-        status: Current processing state of the item.
-        challenge: AuthMethodSelectChallenge (object) or EmbeddedChallenge
-            (object) or RedirectChallenge (object) or DecoupledChallenge
-            (object) (Challenge).
-        error: Error detailing why the background operation failed.
-        created_at: Time at which the sync was created
-        started_at: Time at which the sync started
-        ended_at: Time at which the sync ended
-    """
-    __dump_attributes__ = [
-        'id',
-        'status',
-        'challenge',
-        'error',
-        'created_at',
-        'started_at',
-        'ended_at',
-    ]
-
-    id = None
-    status = None
-    challenge = None
-    error = None
-    created_at = None
-    started_at = None
-    ended_at = None
-
-    def __init__(self, session, **kwargs):
-        super(Sync, self).__init__(session, **kwargs)
-        if self.created_at:
-            self.created_at = dateutil.parser.parse(self.created_at)
-
-        if self.started_at:
-            self.started_at = dateutil.parser.parse(self.started_at)
-
-        if self.ended_at:
-            self.ended_at = dateutil.parser.parse(self.ended_at)
-
-        if self.challenge:
-            self.challenge = Challenge.from_dict(self.session, self.challenge)
-
-    def __unicode__(self):
-        return u"Sync: %s" % (self.id)
-
-    def dump(self):
-        dumped_value = super(Sync, self).dump()
-        if self.challenge:
-            dumped_value.update({
-                'challenge': self.challenge.dump()
-            })
-
-        return dumped_value
-
-
-class User(ModelBase):
-    """Object representing an user.
-
-    Attributes:
-        user_id: internal figo user id
-        name: full name
-        email: email address
-        address: postal address
-        verified_email: boolean, indicates whether the email address has been
-            verified
-        send_newsletter: boolean, incicates whether the user has signed up for
-            the newsletter
-        language: two letter code for preferred language
-        premium: --
-        premium_expires_on: --
-        join_date: --
-
-    """
-
-    __dump_attributes__ = ["name", "address", "send_newsletter", "language"]
-
-    user_id = None
-    name = None
-    email = None
-    address = None
-    verified_email = None
-    send_newsletter = None
-    language = None
-    premium = None
-    premium_expires_on = None
-    premium_subscription = None
-    join_date = None
-
-    def __init__(self, session, **kwargs):
-        super(User, self).__init__(session, **kwargs)
-
-        if self.join_date:
-            self.join_date = dateutil.parser.parse(self.join_date)
-
-    def __unicode__(self):
-        return u"User: %s (%s, %s)" % (self.name, self.user_id, self.email)
+    def __str__(self):
+        return f"Notification: {self.observe_key} triggering {self.notify_uri}"
 
 
 class WebhookNotification(ModelBase):
@@ -702,369 +849,18 @@ class WebhookNotification(ModelBase):
     Attributes:
         notification_id: internal figo notification ID from the notification
             registration response
+        notification_uri: Notification messages will be sent to this URL.
+            The URL schemes https and http are used for webhooks.
         observe_key: notification key
         state: the state parameter from the notification registration request
-        data: object or list with the data (AccountBalance or Transaction)
     """
 
     __dump_attributes__ = []
 
     notification_id = None
+    notification_uri = None
     observe_key = None
     state = None
-    data = None
 
-    def __unicode__(self):
-        return u"WebhookNotification: %s" % (self.notification_id,)
-
-
-class Service(ModelBase):
-    """Object representing a payment service.
-
-    Attributes:
-        name: human readable name of the service
-        bank_code: surrogate bank code used for this service
-        state: URL to a logo of the bank
-        additional_icons: dictionary that maps resolutions to icon URLs
-        language: the language the service description is in
-        available_languages: list of other available languages
-    """
-
-    __dump_attributes__ = [
-        "name", "bank_code", "icon", "additional_icons", "language"
-    ]
-
-    name = None
-    bank_code = None
-    state = None
-    additional_icons = None
-    language = None
-    available_languages = []
-
-    def __init__(self, session, **kwargs):
-        super(Service, self).__init__(session, **kwargs)
-        if self.language:
-            self.available_languages = [l for l in self.language['available']]
-            self.language = self.language['current']
-
-    def __unicode__(self, *args, **kwargs):
-        return u"Service: %s" % (self.bank_code)
-
-
-class LoginSettings(ModelBase):
-    """Object representing login settings for a banking service.
-
-    Attributes:
-        bank_name: human readable bank of the bank
-        supported: boolean, if set bank is supported
-        icon: URL to the logo of the bank
-        additional_icons: dictionary that maps resolutions to icon URLs
-        credentials: list of credentials needed to connect to the bank
-        auth_type: kind of authentication used by the bank
-        advice: any additional advice useful to locate the required credentials
-    """
-
-    __dump_attributes__ = [
-        'id', 'name', 'icon', 'supported', 'country', 'language', 'bic',
-        'access_methods', 'bank_code',
-    ]
-
-    id = None
-    name = None
-    icon = None
-    supported = None
-    country = None
-    language = None
-    bic = None
-    access_methods = None
-    bank_code = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"LoginSettings: %s" % (self.name,)
-
-
-class Credential(ModelBase):
-    """Object representing a login credential field for a banking service.
-
-    Attributes:
-        label: label for text input field
-        masked: boolean, if set the text input field is used for password
-            entry and should be masked
-        optional: boolean, if set the field is optional and may be an empty
-            string
-    """
-
-    __dump_attributes__ = ["label", "masked", "optional"]
-
-    label = None
-    masked = None
-    optional = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"Credential: %s" % (self.label,)
-
-
-class TaskToken(ModelBase):
-    """Object representing a task token.
-
-    Attributes:
-        task_token:
-    """
-
-    __dump_attributes__ = ["task_token"]
-
-    task_token = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"TaskToken: %s" % (self.task_token,)
-
-
-class TaskState(ModelBase):
-    """Object representing a tasks state.
-
-    Attributes:
-        account_id: account id of currently processed account
-        message: status message or error message for currently processed
-            account
-        is_waiting_for_pin: boolean, if set the figo server is waiting for PIN
-        is_waiting_for_response: boolean, if set the figo server is waiting
-            for a response to the parameter challenge
-        is_erroneous: boolean, if set an error occurred
-        is_ended: boolean, if set the communication with the bank has been
-            completed
-        challenge: challenge object
-        error: dictionary, populated in the case of error
-
-    """
-
-    __dump_attributes__ = [
-        "account_id", "message", "is_waiting_for_pin",
-        "is_waiting_for_response", "is_erroneous", "is_ended", "challenge",
-        "error"
-    ]
-
-    account_id = None
-    message = None
-    is_waiting_for_pin = None
-    is_waiting_for_response = None
-    is_erroneous = None
-    is_ended = None
-    challenge = None
-    error = None
-
-    def __unicode__(self, *args, **kwargs):
-        return (
-            u"TaskState: '{self.message}' (is_erroneous: {self.is_erroneous}, "
-            u"is_ended: {self.is_ended})".format(self=self)
-        )
-
-
-class Challenge(ModelBase):
-    """Object representing a challenge.
-
-    Attributes:
-        title: challenge title
-        label: response label
-        format: challenge data format, one of (Text, HTML, HHD, Matrix)
-        data: challenge data
-
-    """
-    __dump_attributes__ = [
-        "id", "title", "label", "format", "data", "type", "location",
-        "created_at"
-    ]
-
-    id = None
-    title = None
-    label = None
-    format = None
-    data = None
-    type = None
-    location = None
-    created_at = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"Challenge: %s" % (self.title)
-
-
-class PaymentProposal(ModelBase):
-    """Object representing a payment proposal.
-
-    Attributes:
-        account_number: Account number or IBAN
-        bank_code: bank code or BIC
-        name: Name of the payment proposal
-    """
-
-    __dump_attributes__ = ["account_number", "bank_code", "name"]
-
-    account_number = None
-    bank_code = None
-    name = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"Payment Proposal: %s" % (self.name)
-
-
-class Process(ModelBase):
-    """Object representing a Business Process.
-
-    Attributes:
-        email: The email of the existing user to use as context or the new
-            user to create beforehand. In the latter case it must obey the figo
-            username & password policy.
-        password: The password of the user existing or new user. In the latter
-            case it must obey the figo username & password policy.
-        redirect_uri: The authorization code will be sent to this callback URL.
-            It must match one of the URLs registered during application
-            registration.
-        state: Any kind of string that will be forwarded in the callback
-            response message. It serves two purposes: The value is used to
-            maintain state between this request and the callback, e.g. it might
-            contain a session ID from your application. The value should
-            also contain a random component, which your application checks to
-            mitigate cross-site request forgery.
-        steps: A list of step definitions. Each step definition is a dictionary
-            with type and options keys, where type is the name of step type and
-            options is another dictionary containing all the settings for the
-            respective step.
-    """
-
-    __dump_attributes__ = [
-        "email", "password", "redirect_uri", "state", "steps"
-    ]
-
-    email = None
-    password = None
-    redirect_uri = None
-    state = None
-    steps = None
-
-
-class ProcessStep(ModelBase):
-    """Object representing a process step.
-
-    Attributes:
-        type: name of step type
-        options: settings for respective step
-    """
-
-    __dump_attributes__ = ["type", "options"]
-
-    type = None
-    options = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"ProcessStep Type: %s" % (self.type)
-
-
-class ProcessOptions(ModelBase):
-    """Object representing a process option.
-
-    Attributes:
-        account_number:
-        amount:
-        bank_code:
-        currency:
-        name:
-        purpose:
-        type:
-    """
-
-    __dump_attributes__ = [
-        "account_number", "amount", "bank_code", "currency", "name", "purpose",
-        "type"
-    ]
-
-    account_number = None
-    amount = None
-    bank_code = None
-    currency = None
-    name = None
-    purpose = None
-    type = None
-
-
-class ProcessToken(ModelBase):
-    """Object representing a process token.
-
-    Attributes:
-        process_token:
-    """
-
-    __dump_attributes__ = ["process_token"]
-
-    process_token = None
-
-    def __unicode__(self, *args, **kwargs):
-        return u"Process Token: %s" % (self.process_token)
-
-
-class Security(ModelBase):
-    """Object representing one bank security on a certain bank account of the
-    user.
-
-    Attributes:
-        security_id: internal figo connect security id
-        account_id: internal figo connect account id
-        name: name of originator or recipient
-        isin: international securities identification number
-        wkn: wertpapierkennnummer
-        currency: three character currency code
-        amount: monetary value in account currency
-        quantity: number of securities or value
-        amount_original_currency: monetary value in trading currency
-        exchange_rate: exchange rate between trading and account currency
-        price: current price
-        price_currency: currency of current price
-        purchase_price: purchase price
-        purchase_price_currency: currency of purchase price
-        visited: boolean that indicates whether the security has been marked
-            as visited by the user
-        trade_timestamp: trade timestamp
-        creation_timestamp: internal creation timestamp
-        modification_timestamp: internal modification timestamp
-
-    """
-
-    __dump_attributes__ = []
-
-    security_id = None
-    account_id = None
-    name = None
-    isin = None
-    wkn = None
-    currency = None
-    amount = None
-    quantity = None
-    amount_original_currency = None
-    exchange_rate = None
-    price = None
-    price_currency = None
-    purchase_price = None
-    purchase_price_currency = None
-    visited = None
-    trade_timestamp = None
-    creation_timestamp = None
-    modification_timestamp = None
-
-    def __init__(self, session, **kwargs):
-        super(Security, self).__init__(session, **kwargs)
-
-        if self.trade_timestamp:
-            self.trade_timestamp = dateutil.parser.parse(self.trade_timestamp)
-
-        if self.creation_timestamp:
-            self.creation_timestamp = dateutil.parser.parse(
-                self.creation_timestamp
-            )
-
-        if self.modification_timestamp:
-            self.modification_timestamp = dateutil.parser.parse(
-                self.modification_timestamp
-            )
-
-    def __unicode__(self):
-        return u"Security: %d %s to %s at %s" % (
-            self.amount, self.currency, self.name, self.trade_timestamp
-        )
+    def __str__(self):
+        return f"WebhookNotification: {self.notification_id}"
