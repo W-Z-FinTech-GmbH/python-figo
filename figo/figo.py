@@ -525,7 +525,7 @@ class FigoSession(FigoObject):
             f"/catalog/banks?{query_params}",
             collection_name="collection",
         )
-        if response and len(response) > 0:
+        if response:
             return response[0]
 
         err_msg = f"Login settings for bank {item_id} were not found"
